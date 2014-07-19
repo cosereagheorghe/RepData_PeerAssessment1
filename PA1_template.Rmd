@@ -3,11 +3,39 @@
 
 ## Loading and preprocessing the data
 
+```{r echo=TRUE, echo=TRUE}
+    ac <- read.csv(unz('activity.zip', filename='activity.csv'),
+             colClasses = c("numeric", "Date", "numeric"));
+    str(ac);
+
+```
+
 
 
 ## What is mean total number of steps taken per day?
 
+For this part of the assignment, you can ignore the missing values in the dataset.
 
+1. Make a histogram of the total number of steps taken each day
+
+2. Calculate and report the mean and median total number of steps taken per day
+
+```{r}
+    require('lattice')
+
+    x <- aggregate(steps ~ date, data=ac, FUN=sum)
+    histogram(~steps, data=x, nint=24, main="Activity",
+              sub="Total steps each day")
+
+    # calculate mean, median for steps
+    steps.mean <- mean(x$steps)
+    steps.median <- median(x$steps)
+
+    # and report them
+    sprintf("Steps mean: %g", steps.mean)
+    sprintf("Steps median: %g", steps.median)
+
+```
 
 ## What is the average daily activity pattern?
 
