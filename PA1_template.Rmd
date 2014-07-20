@@ -5,55 +5,109 @@
 
 ```{r echo=TRUE, echo=TRUE}
     ac <- read.csv(unz('activity.zip', filename='activity.csv'),
-             colClasses = c("numeric", "Date", "numeric"));
+                   colClasses = c("numeric", "Date", "numeric"))
     str(ac);
-
 ```
 
 
 
-## What is mean total number of steps taken per day?
-For this part of the assignment, you can ignore the missing values in the dataset.
-1. Make a histogram of the total number of steps taken each day
-2. Calculate and report the mean and median total number of steps taken per day
+## Mean total number of steps taken per day
 ```{r}
     require('lattice')
 
     x <- aggregate(steps ~ date, data=ac, FUN=sum)
-    histogram(~steps, data=x, nint=24, main="Activity",
-              sub="Total steps each day")
-
-    # calculate mean, median for steps
     steps.mean <- mean(x$steps)
     steps.median <- median(x$steps)
 
-    # and report them
+    # histogram for total_steps
+    histogram(~steps, data=x, nint=24, main="Activity",
+              sub="Total steps each day",
+              panel = function(...) {
+                  panel.histogram(...);
+                  panel.abline(v=steps.mean, col='red')
+              }
+              )
+
     sprintf("Steps mean: %g", steps.mean)
     sprintf("Steps median: %g", steps.median)
-
 ```
 
-## What is the average daily activity pattern?
-1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis)
-and the average number of steps taken, averaged across all days (y-axis)
-2. Which 5-minute interval, on average across all the days in the dataset,
-contains the maximum number of steps?
+## Average daily activity pattern
 
-### The time series of the 5-minute interval
 ```{r echo=TRUE}
     y <- aggregate(steps ~ interval, data=ac, FUN=mean)
+    iid <- y$interval[which.max(y$steps)]
+
     xyplot(steps ~ interval, data=y, type='l', main="Activity",
-           sub="Avarage steps/interval on a day", xlab='5-min interval')
+           sub="Avarage steps/interval on a day",
+           xlab='5-min interval',
+           panel = function(...) {
+               panel.xyplot(...)
+               panel.abline(v=iid, col='red')
+           })
 
-```
-
-### Interval number with max number of steps on avarage
-```{r}
-    sprintf("Interval no. with max avarage: %d", y$interval[which.max(y$steps)])
+    sprintf("Interval for MAX: %d", iid)
 ```
 
 ## Imputing missing values
 
+1.  Missing values in dataset
+
+```{r}
+    # no of lines without NAs
+    nrw <- nrow(ac)
+    nok <- !complete.cases(ac)
+    nas <- sum(nok)
+    sprintf("Number of rows with NAs: %d/%d (%.4g%%)", nas, nrw,
+            nas*100/nrw);
+```
 
 
-## Are there differences in activity patterns between weekdays and weekends?
+2. Filling values for NAs. Missing values for steps are filled with mean
+across all days for that interval.
+
+```{r}
+    # remap intervals of a day to 1:288 range (288 == 24*60/5)
+    hhmm2num <- function(hhmm) {
+        hh = hhmm %/% 100
+        mm = (hhmm %% 100) / 5
+        return(1 + hh * 12 + mm)
+    }
+
+    ac2 <- ac
+
+    # use vectorized if
+    ac2$steps <- ifelse(is.na(ac2$steps),
+                        round(y[hhmm2num(ac2$interval), "steps"]),
+                        ac2$steps)
+```
+
+3. Histogram for total number of steps each day.
+
+```{r}
+    x2 <- aggregate(steps ~ date, data=ac2, FUN=sum)
+    steps.mean <- mean(x2$steps)
+    steps.median <- median(x2$steps)
+
+    histogram(~steps, data=x2, nint=24, main="Activity",
+              sub="Total steps each day",
+              panel = function(...) {
+                  panel.histogram(...);
+                  panel.abline(v=steps.mean, col='red')
+              }
+              )
+
+    sprintf("Steps mean: %g", steps.mean)
+    sprintf("Steps median: %g", steps.median)
+```
+    
+## Activity patterns between weekdays and weekends
+
+```{r}
+    wd <- factor(weekdays(ac2$date) %in% c("Saturday", "Sunday"),
+                      labels = c("weekday", "weekend"))
+    ac2 <- cbind(ac2, wd)
+    x2 <- aggregate(steps ~ interval + wd, data = ac2, FUN = mean)
+    xyplot(steps ~ interval | wd, data=x2, type='l', layout=c(1,2),
+           ylab="Number of steps")
+```
